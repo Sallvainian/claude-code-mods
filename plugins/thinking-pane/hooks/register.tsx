@@ -21,6 +21,8 @@ const C = {
   live: '#a6e3a1',
   liveInk: '#1e1e2e',
   pill: '#313244',
+  path: '#f9e2af',
+  code: '#f5c2e7',
 }
 const AGENT_COLORS: Record<string, string> = {
   Plan: '#cba6f7',
@@ -70,6 +72,59 @@ function running(ms: number): string {
 function clip(text: string, max: number): string {
   const one = text.replace(/\s+/g, ' ').trim()
   return one.length <= max ? one : one.slice(0, Math.max(1, max - 1)) + '…'
+}
+
+/** One run of a thought's text, as the pane styles it. */
+type Seg = { text: string; kind: 'plain' | 'code' | 'path'; bold: boolean }
+
+const EXT = 'tsx?|jsx?|mjs|cjs|json|jsonc|md|mdx|py|rs|go|rb|java|kt|swift|c|h|cpp|hpp|cs|sh|zsh|bash|fish|toml|ya?ml|ini|conf|cfg|env|css|scss|html|xml|svg|txt|log|lock|sql|vue|svelte|lua|nix|plist'
+// Something with a slash in it, or a bare file name with a known extension.
+const PATHISH = new RegExp('(?:~|\\.{1,2})?(?:/?[\\w.@+-]+)+/[\\w.@+-]*|\\b[\\w-]+(?:\\.[\\w-]+)*\\.(?:' + EXT + ')\\b', 'g')
+const HAS_EXT = new RegExp('\\.(?:' + EXT + ')$')
+
+function isPath(text: string): boolean {
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(text)) return false
+  if (/^(?:~\/|\.{1,2}\/|\/[\w.@+-])/.test(text)) return true
+  if (HAS_EXT.test(text)) return true
+  return (text.match(/\//g) ?? []).length >= 2
+}
+
+/** Splits plain text into plain runs and file-path runs. */
+function paths(text: string, bold: boolean): Seg[] {
+  const out: Seg[] = []
+  let at = 0
+  for (const m of text.matchAll(PATHISH)) {
+    const start = m.index ?? 0
+    // A sentence's own punctuation is not part of the path.
+    const raw = m[0].replace(/[.,;:!?]+$/, '')
+    // Skip a URL's tail, which PATHISH would otherwise pick up.
+    const before = text.slice(Math.max(0, start - 8), start)
+    if (!raw || /[a-z]:\/?\/?$/i.test(before) || !isPath(raw)) continue
+    if (start > at) out.push({ text: text.slice(at, start), kind: 'plain', bold })
+    out.push({ text: raw, kind: 'path', bold })
+    at = start + raw.length
+  }
+  if (at < text.length) out.push({ text: text.slice(at), kind: 'plain', bold })
+  return out
+}
+
+/**
+ * A thought's text as styled runs: **bold** drawn bold, `code` in its own
+ * color, file paths in theirs. Markers without a closing pair (a thought
+ * still streaming) stay as typed.
+ */
+function styled(text: string): Seg[] {
+  const out: Seg[] = []
+  let at = 0
+  for (const m of text.matchAll(/\*\*([^*\n]+?)\*\*|`([^`\n]+)`/g)) {
+    const start = m.index ?? 0
+    if (start > at) out.push(...paths(text.slice(at, start), false))
+    if (m[1] !== undefined) out.push(...paths(m[1], true))
+    else if (m[2] !== undefined) out.push({ text: m[2], kind: isPath(m[2]) ? 'path' : 'code', bold: false })
+    at = start + m[0].length
+  }
+  if (at < text.length) out.push(...paths(text.slice(at), false))
+  return out
 }
 
 function clone<T>(value: T): T {
@@ -360,7 +415,18 @@ export const register: Register = on => {
       <Box flexDirection="column">
         <Text color={C.time}>{hms(th.at)}</Text>
         <Text>
-          {th.text.trim()}
+          {styled(th.text.trim()).map(seg =>
+            seg.kind === 'plain' && !seg.bold ? (
+              seg.text
+            ) : (
+              <Text
+                color={seg.kind === 'path' ? C.path : seg.kind === 'code' ? C.code : undefined}
+                bold={seg.bold || undefined}
+              >
+                {seg.text}
+              </Text>
+            ),
+          )}
           {isLive ? <Text color={C.live}>▌</Text> : ''}
         </Text>
       </Box>
@@ -411,7 +477,6 @@ export const register: Register = on => {
           </Box>
           {open ? (
             <Box flexDirection="column" gap={1}>
-              {a.items.length === 0 ? <Text color={C.dim}>No thinking from this agent yet.</Text> : null}
               {a.items.map(item => {
                 if (item.kind === 'thought') return thoughtView(item, live && item === last)
                 const child = t.agents[item.id]
@@ -438,23 +503,44 @@ export const register: Register = on => {
         : '✓ ' + took((turn.endedAt ?? now) - turn.startedAt)
       const lastThought = thoughts[thoughts.length - 1]
 
+      const promptKey = 'prompt-' + turn.id
+      const promptOpen = toggled[promptKey] ?? false
+      const prompt = turn.prompt.trim()
+
       return (
         <Box flexDirection="column" gap={1}>
-          <Text color={C.dim} wrap="truncate-end">
-            {'── ' + hms(turn.startedAt) + (turn.prompt ? ' · ' + clip(promptLabel(turn.prompt), width - 19) : '')}
-          </Text>
-          <Box flexDirection="column" borderStyle="round" borderColor={C.border} paddingX={1}>
-            <Box flexDirection="row" justifyContent="space-between">
-              <Text color={C.main} bold>
-                main
-              </Text>
-              <Text color={C.dim}>{status}</Text>
+          {prompt ? (
+            <Box flexDirection="column">
+              <Button
+                key={promptKey}
+                plain
+                onPress={() => update($, toggledAtom, map => ({ ...map, [promptKey]: !promptOpen }))}
+              >
+                <Text color={C.dim}>{(promptOpen ? '▾ ' : '▸ ') + hms(turn.startedAt) + ' · '}</Text>
+                <Text color={C.dim}>{promptOpen ? 'prompt' : clip(promptLabel(prompt), width - 19)}</Text>
+              </Button>
+              {promptOpen ? (
+                <Box paddingLeft={2}>
+                  <Text>{prompt}</Text>
+                </Box>
+              ) : null}
             </Box>
-            <Box flexDirection="column" gap={1}>
-              {thoughts.length === 0 ? <Text color={C.dim}>No thinking in this turn.</Text> : null}
-              {thoughts.map(th => thoughtView(th, isLatest && live && !liveChild && th === lastThought))}
+          ) : (
+            <Text color={C.dim}>{'── ' + hms(turn.startedAt)}</Text>
+          )}
+          {thoughts.length > 0 ? (
+            <Box flexDirection="column" borderStyle="round" borderColor={C.border} paddingX={1}>
+              <Box flexDirection="row" justifyContent="space-between">
+                <Text color={C.main} bold>
+                  main
+                </Text>
+                <Text color={C.dim}>{status}</Text>
+              </Box>
+              <Box flexDirection="column" gap={1}>
+                {thoughts.map(th => thoughtView(th, isLatest && live && !liveChild && th === lastThought))}
+              </Box>
             </Box>
-          </Box>
+          ) : null}
           {agents.map(a => agentView(a, 0, width - 6))}
         </Box>
       )

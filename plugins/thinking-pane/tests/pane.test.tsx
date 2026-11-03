@@ -45,7 +45,7 @@ test('main and subagent thinking land in their own cards, and a finished agent c
   await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
   await $.turn.start({ turnId: 't1', text: 'users get logged out after an hour, fix it' })
   await drain($.turn.step({ turnId: 't1', index: 0, model: 'm', messageCount: 1 }))
-  await $.agent.spawn({ prompt: 'find callers', description: 'find refresh callers', subagentType: 'Explore' })
+  await $.agent.spawn({ prompt: 'find callers', description: 'find refresh callers', subagentType: 'Explore', tool_use_id: 'tu1', provider: { plugin: 'engine', tier: 'core' }, parentModel: 'm', background: false, fork: false })
   await $.turn.start({ turnId: 's1', text: 'find callers', agentId: 'explore-1' })
   await clock.advance(3000)
   await drain($.turn.step({ turnId: 's1', index: 0, model: 'm', messageCount: 1, agentId: 'explore-1' }))
@@ -58,7 +58,7 @@ test('main and subagent thinking land in their own cards, and a finished agent c
   await ui.unmount()
 
   await clock.advance(9000)
-  await $.turn.complete({ turnId: 's1', agentId: 'explore-1', answer: '', durationMs: 12000, isAborted: false, reason: 'end_turn' })
+  await $.turn.complete({ turnId: 's1', agentId: 'explore-1', answer: '', durationMs: 12000, isAborted: false, reason: 'answer' })
   await clock.advance(200)
 
   ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
@@ -69,5 +69,31 @@ test('main and subagent thinking land in their own cards, and a finished agent c
   await ui.press({ key: 'toggle-explore-1' })
   await clock.advance(200)
   expect(await ui.find({ type: 'Text', text: /Grep for refreshToken/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('thinking is styled; a turn with no thinking keeps only its prompt row, which opens', async ($, on) => {
+  const clock = mock.clock(on, { now: Date.UTC(2026, 10, 3, 14, 2, 7) })
+  engine(on, { main: ['Check **the token check** in `src/auth.ts` and run `npm test`.'] })
+
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await $.turn.start({ turnId: 't0', text: 'a turn with no thinking' })
+  await $.turn.start({ turnId: 't1', text: 'fix it' })
+  await drain($.turn.step({ turnId: 't1', index: 0, model: 'm', messageCount: 1 }))
+  await clock.advance(200)
+
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^src\/auth\.ts$/ }))?.props.color).toBe('#f9e2af')
+  expect((await ui.find({ type: 'Text', text: /^npm test$/ }))?.props.color).toBe('#f5c2e7')
+  expect((await ui.find({ type: 'Text', text: /^the token check$/ }))?.props.bold).toBe(true)
+  expect(await ui.find({ type: 'Text', text: /\*\*/ })).toBeUndefined()
+  // A turn with no thinking keeps its prompt row and shows no empty card.
+  expect(await ui.find({ type: 'Text', text: /a turn with no thinking/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /No thinking/ })).toBeUndefined()
+
+  // The prompt row opens to show the whole prompt.
+  await ui.press({ key: 'prompt-t1' })
+  await clock.advance(200)
+  expect(await ui.find({ type: 'Text', text: /^fix it$/ })).toBeDefined()
   await ui.unmount()
 })
