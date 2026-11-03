@@ -91,9 +91,14 @@ test('thinking is styled; a turn with no thinking keeps only its prompt row, whi
   expect(await ui.find({ type: 'Text', text: /a turn with no thinking/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /No thinking/ })).toBeUndefined()
 
-  // The prompt row opens to show the whole prompt.
+  // The prompt has the row to itself; its time sits on the line below.
+  expect(await ui.find({ type: 'Text', text: /^fix it$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^\d{1,2}:\d{2}:\d{2} [AP]M$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: / · / })).toBeUndefined()
+
+  // The prompt row opens and closes.
   await ui.press({ key: 'prompt-t1' })
   await clock.advance(200)
-  expect(await ui.find({ type: 'Text', text: /^fix it$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^▾ $/ })).toBeDefined()
   await ui.unmount()
 })

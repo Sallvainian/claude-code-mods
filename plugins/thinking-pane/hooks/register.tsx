@@ -516,14 +516,14 @@ export const register: Register = on => {
                 plain
                 onPress={() => update($, toggledAtom, map => ({ ...map, [promptKey]: !promptOpen }))}
               >
-                <Text color={C.dim}>{(promptOpen ? '▾ ' : '▸ ') + hms(turn.startedAt) + ' · '}</Text>
-                <Text color={C.dim}>{promptOpen ? 'prompt' : clip(promptLabel(prompt), width - 19)}</Text>
+                <Text color={C.dim}>{promptOpen ? '▾ ' : '▸ '}</Text>
+                <Text color={C.dim} wrap="wrap">
+                  {promptOpen ? prompt : clip(promptLabel(prompt), (width - 3) * 3)}
+                </Text>
               </Button>
-              {promptOpen ? (
-                <Box paddingLeft={2}>
-                  <Text>{prompt}</Text>
-                </Box>
-              ) : null}
+              <Box paddingLeft={2}>
+                <Text color={C.time}>{hms(turn.startedAt)}</Text>
+              </Box>
             </Box>
           ) : (
             <Text color={C.dim}>{'── ' + hms(turn.startedAt)}</Text>
