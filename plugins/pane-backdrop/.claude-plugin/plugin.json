@@ -1,5 +1,6 @@
 {
   "name": "pane-backdrop",
   "version": "0.1.0",
+  "license": "MIT",
   "description": "Opens every mod's pane with no background of its own, so the terminal's background shows through"
 }
