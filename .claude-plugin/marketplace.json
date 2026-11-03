@@ -1,0 +1,16 @@
+{
+  "name": "claude-code-mods",
+  "owner": { "name": "Sallvainian" },
+  "plugins": [
+    {
+      "name": "thinking-pane",
+      "source": "./plugins/thinking-pane",
+      "description": "Shows Claude's thinking live in a side pane, with each subagent's thinking in a collapsible card"
+    },
+    {
+      "name": "pane-backdrop",
+      "source": "./plugins/pane-backdrop",
+      "description": "Opens every mod's pane with no background of its own, so the terminal's background shows through"
+    }
+  ]
+}

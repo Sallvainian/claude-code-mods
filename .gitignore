@@ -1,0 +1,21 @@
+# Type files Claude Code writes beside a mod it loads
+.claude-plugin/types/
+**/.claude-plugin/types/
+
+# MCP bundles Claude Code unpacks
+.mcpb-cache/
+
+# OS and editor files
+.DS_Store
+*.swp
+*~
+.idea/
+.vscode/
+
+# Logs and dependencies
+*.log
+node_modules/
+
+# Local secrets
+.env
+.env.*
