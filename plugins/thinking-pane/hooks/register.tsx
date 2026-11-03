@@ -546,6 +546,9 @@ export const register: Register = on => {
       const promptOpen = toggled[promptKey] ?? false
       const prompt = turn.prompt.trim()
       const togglePrompt = () => update($, toggledAtom, map => ({ ...map, [promptKey]: !promptOpen }))
+      const mainKey = 'main-' + turn.id
+      const mainOpen = toggled[mainKey] ?? true
+      const toggleMain = () => update($, toggledAtom, map => ({ ...map, [mainKey]: !mainOpen }))
 
       return (
         <Box flexDirection="column" gap={1}>
@@ -570,14 +573,19 @@ export const register: Register = on => {
           {thoughts.length > 0 ? (
             <Box flexDirection="column" borderStyle="round" borderColor={C.main} paddingX={1}>
               <Box flexDirection="row" justifyContent="space-between">
-                <Text color={C.main} bold>
-                  main
-                </Text>
+                <Button key={mainKey} plain onPress={toggleMain}>
+                  <Text color={C.dim}>{mainOpen ? '▾ ' : '▸ '}</Text>
+                  <Text color={C.main} bold>
+                    main
+                  </Text>
+                </Button>
                 <Text color={C.dim}>{status}</Text>
               </Box>
-              <Box flexDirection="column" gap={1}>
-                {thoughts.map(th => thoughtView(th, isLatest && live && !liveChild && th === lastThought))}
-              </Box>
+              {mainOpen ? (
+                <Box flexDirection="column" gap={1}>
+                  {thoughts.map(th => thoughtView(th, isLatest && live && !liveChild && th === lastThought))}
+                </Box>
+              ) : null}
             </Box>
           ) : null}
           {agents.map(a => agentCard(a, width - 6, 2))}
@@ -590,6 +598,9 @@ export const register: Register = on => {
       const color = agentColor(a.type)
       const live = a.endedAt === null
       const last = a.items[a.items.length - 1]
+      const cardKey = 'card-' + a.id
+      const cardOpen = toggled[cardKey] ?? true
+      const toggleCard = () => update($, toggledAtom, map => ({ ...map, [cardKey]: !cardOpen }))
       return (
         <Box flexDirection="column" gap={1}>
           <Box flexDirection="row" gap={2}>
@@ -607,22 +618,25 @@ export const register: Register = on => {
           <Box flexDirection="column" borderStyle="round" borderColor={color} paddingX={1}>
             <Box flexDirection="row" justifyContent="space-between" gap={1}>
               <Box flexGrow={1} flexShrink={1}>
-                <Text>
+                <Button key={cardKey} plain onPress={toggleCard}>
+                  <Text color={C.dim}>{cardOpen ? '▾ ' : '▸ '}</Text>
                   <Text color={color} bold>
                     {a.type}
                   </Text>
                   <Text color={C.dim}>{a.description ? ' ' + a.description : ''}</Text>
-                </Text>
+                </Button>
               </Box>
               {pill(a)}
             </Box>
-            <Box flexDirection="column" gap={1}>
-              {a.items.map(item => {
-                if (item.kind === 'thought') return thoughtView(item, live && item === last)
-                const child = t.agents[item.id]
-                return child ? agentCard(child, width - 10, 0) : null
-              })}
-            </Box>
+            {cardOpen ? (
+              <Box flexDirection="column" gap={1}>
+                {a.items.map(item => {
+                  if (item.kind === 'thought') return thoughtView(item, live && item === last)
+                  const child = t.agents[item.id]
+                  return child ? agentCard(child, width - 10, 0) : null
+                })}
+              </Box>
+            ) : null}
           </Box>
         </Box>
       )

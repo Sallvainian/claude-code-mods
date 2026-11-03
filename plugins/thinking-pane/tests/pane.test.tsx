@@ -66,6 +66,14 @@ test('subagents are cards on main; a card opens its page, back returns, the view
   expect(await ui.find({ type: 'Text', text: /Users get logged out/ })).toBeUndefined()
   expect(await ui.find({ type: 'Text', text: /› Explore/ })).toBeDefined()
 
+  // The agent's card on its page folds to its header and opens again.
+  await ui.press({ key: 'card-explore-1' })
+  await clock.advance(200)
+  expect(await ui.find({ type: 'Text', text: /Grep for refreshToken/ })).toBeUndefined()
+  await ui.press({ key: 'card-explore-1' })
+  await clock.advance(200)
+  expect(await ui.find({ type: 'Text', text: /Grep for refreshToken/ })).toBeDefined()
+
   // Back returns to main.
   await ui.press({ key: 'back' })
   await clock.advance(200)
@@ -117,5 +125,14 @@ test('thinking is styled; a turn with no thinking keeps only its prompt row, whi
   await ui.press({ key: 'prompt-t1' })
   await clock.advance(200)
   expect(await ui.find({ type: 'Text', text: /^▾ $/ })).toBeDefined()
+
+  // The main card folds to its header, like the prompt box, and opens again.
+  await ui.press({ key: 'main-t1' })
+  await clock.advance(200)
+  expect(await ui.find({ type: 'Text', text: /^src\/auth\.ts$/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /^main$/ })).toBeDefined()
+  await ui.press({ key: 'main-t1' })
+  await clock.advance(200)
+  expect(await ui.find({ type: 'Text', text: /^src\/auth\.ts$/ })).toBeDefined()
   await ui.unmount()
 })
