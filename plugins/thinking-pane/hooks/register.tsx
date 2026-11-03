@@ -12,6 +12,8 @@ const THOUGHT_MAX = 40000
 const treeAtom = atom({ plugin: 'thinking-pane', key: 'tree' } as const, { turns: [], agents: {} }, { shape: 'tree-1' })
 const toggledAtom = atom({ plugin: 'thinking-pane', key: 'toggled' } as const, {})
 const tickAtom = atom({ plugin: 'thinking-pane', key: 'tick' } as const, 0)
+// Which agent page the pane shows: the path of agent ids from main down; empty is main.
+const pageAtom = atom({ plugin: 'thinking-pane', key: 'page' } as const, [])
 
 const C = {
   main: '#89b4fa',
@@ -140,6 +142,8 @@ let flushPending = false
 let ticker: { cancel: () => void } | null = null
 // Keep the pane at its newest line, until the person scrolls up to read.
 let follow = true
+// The transcript last seen beside the pane, so a switch to an agent's follows it.
+let lastView: string | undefined
 
 async function load($: EngineInterface): Promise<Tree> {
   if (!work) work = clone(await read($, treeAtom)) as Tree
@@ -230,6 +234,39 @@ function ensureAgent(t: Tree, id: string, at: number): Agent {
   t.agents[id] = agent
   itemsOf(t, null, at).push({ kind: 'agent', id })
   return agent
+}
+
+/** The ids from main down to `id`, for an agent page's back trail. */
+function chainTo(t: Tree, id: string): string[] {
+  const out: string[] = []
+  const seen = new Set<string>()
+  let cur: string | null | undefined = id
+  while (cur && t.agents[cur] && !seen.has(cur)) {
+    seen.add(cur)
+    out.unshift(cur)
+    cur = t.agents[cur]?.parent
+  }
+  return out
+}
+
+async function openAgent($: EngineInterface, path: string[], isLive: boolean): Promise<void> {
+  await update($, pageAtom, () => path)
+  follow = isLive
+  // After the page has redrawn.
+  $.clock.after(60, () => {
+    void $.ui.scroll({ in: PANE, to: isLive ? 'end' : 'start' }).catch(() => {})
+  })
+}
+
+/** Up one page, landing on the card that was opened. */
+async function goBack($: EngineInterface, path: readonly string[]): Promise<void> {
+  const left = path[path.length - 1]
+  await update($, pageAtom, () => path.slice(0, -1))
+  follow = false
+  if (!left) return
+  $.clock.after(60, () => {
+    void $.ui.scroll({ in: PANE, to: { key: 'open-' + left }, block: 'center' }).catch(() => {})
+  })
 }
 
 async function addThinking(
@@ -407,11 +444,44 @@ export const register: Register = on => {
     const { Box, Text, Button } = $.ui.resolve(e)
     const t = await read($, treeAtom)
     const toggled = await read($, toggledAtom)
+    let page: readonly string[] = await read($, pageAtom)
     await read($, tickAtom)
     const now = await $.clock.now()
     const width = Math.max(24, e.props.bodyColumns)
 
-    const isOpen = (a: Agent) => toggled[a.id] ?? a.endedAt === null
+    // Opening an agent's transcript beside the pane opens its page; main brings main back.
+    const viewed = e.props.view?.agentId
+    if (viewed !== lastView && (viewed === undefined || t.agents[viewed])) {
+      lastView = viewed
+      const next = viewed ? chainTo(t, viewed) : []
+      page = next
+      void update($, pageAtom, () => next).catch(() => {})
+    }
+
+    // A page whose agent is gone (trimmed, cleared) falls back to the part that is left.
+    const known = page.findIndex(id => !t.agents[id])
+    const path = known === -1 ? page : page.slice(0, known)
+    const leafId = path[path.length - 1]
+    const current = leafId ? t.agents[leafId] : undefined
+
+    const pill = (a: Agent) => {
+      const live = a.endedAt === null
+      const timer = live ? running(now - a.startedAt) : took((a.endedAt ?? now) - a.startedAt)
+      return (
+        <Box flexDirection="column" alignItems="flex-end" flexShrink={0}>
+          {live ? (
+            <Text color={C.liveInk} backgroundColor={C.live}>
+              {' ● ' + timer + ' '}
+            </Text>
+          ) : (
+            <Text color={C.dim} backgroundColor={C.pill}>
+              {' ✓ ' + timer + ' '}
+            </Text>
+          )}
+          <Text color={C.time}>{hms(a.startedAt)}</Text>
+        </Box>
+      )
+    }
 
     const thoughtView = (th: Thought, isLive: boolean) => (
       <Box flexDirection="column">
@@ -434,58 +504,25 @@ export const register: Register = on => {
       </Box>
     )
 
-    const agentView = (a: Agent, depth: number, room: number): RenderChildren => {
+    /** An agent as a card to open: its type, task and timer, no thinking. */
+    const agentCard = (a: Agent, room: number, marginLeft: number): RenderChildren => {
       const color = agentColor(a.type)
-      const live = a.endedAt === null
-      const open = isOpen(a)
-      const timer = live ? running(now - a.startedAt) : took((a.endedAt ?? now) - a.startedAt)
-      const descRoom = Math.max(4, room - a.type.length - 16)
-      const last = a.items[a.items.length - 1]
-
+      const subs = agentIdsIn(t, a.items).length
+      const descRoom = Math.max(4, room - a.type.length - 18)
       return (
-        <Box
-          flexDirection="column"
-          borderStyle="round"
-          borderColor={color}
-          paddingX={1}
-          marginLeft={depth === 0 ? 2 : 0}
-        >
+        <Box flexDirection="column" borderStyle="round" borderColor={color} paddingX={1} marginLeft={marginLeft}>
           <Box flexDirection="row" justifyContent="space-between" gap={1}>
-            <Box flexGrow={1} flexShrink={1}>
-              <Button
-                key={'toggle-' + a.id}
-                plain
-                onPress={() => update($, toggledAtom, map => ({ ...map, [a.id]: !open }))}
-              >
-                <Text color={C.dim}>{open ? '▾ ' : '▸ '}</Text>
+            <Box flexDirection="column" flexGrow={1} flexShrink={1}>
+              <Button key={'open-' + a.id} plain onPress={() => openAgent($, [...path, a.id], a.endedAt === null)}>
                 <Text color={color} bold>
                   {a.type}
                 </Text>
-                <Text color={C.dim}>{a.description ? ' ' + clip(a.description, descRoom) : ''}</Text>
+                <Text color={C.dim}>{(a.description ? ' ' + clip(a.description, descRoom) : '') + ' ›'}</Text>
               </Button>
+              {subs > 0 ? <Text color={C.dim}>{subs === 1 ? '1 subagent' : subs + ' subagents'}</Text> : null}
             </Box>
-            <Box flexDirection="column" alignItems="flex-end" flexShrink={0}>
-              {live ? (
-                <Text color={C.liveInk} backgroundColor={C.live}>
-                  {' ● ' + timer + ' '}
-                </Text>
-              ) : (
-                <Text color={C.dim} backgroundColor={C.pill}>
-                  {' ✓ ' + timer + ' '}
-                </Text>
-              )}
-              <Text color={C.time}>{hms(a.startedAt)}</Text>
-            </Box>
+            {pill(a)}
           </Box>
-          {open ? (
-            <Box flexDirection="column" gap={1}>
-              {a.items.map(item => {
-                if (item.kind === 'thought') return thoughtView(item, live && item === last)
-                const child = t.agents[item.id]
-                return child ? agentView(child, depth + 1, room - 4) : null
-              })}
-            </Box>
-          ) : null}
         </Box>
       )
     }
@@ -543,7 +580,50 @@ export const register: Register = on => {
               </Box>
             </Box>
           ) : null}
-          {agents.map(a => agentView(a, 0, width - 6))}
+          {agents.map(a => agentCard(a, width - 6, 2))}
+        </Box>
+      )
+    }
+
+    /** One agent's page: the trail back, then its thinking with its own subagents as cards. */
+    const agentPage = (a: Agent) => {
+      const color = agentColor(a.type)
+      const live = a.endedAt === null
+      const last = a.items[a.items.length - 1]
+      return (
+        <Box flexDirection="column" gap={1}>
+          <Box flexDirection="row" gap={2}>
+            <Button key="back" plain hotkey="b" onPress={() => goBack($, path)}>
+              ← back
+            </Button>
+            <Text wrap="truncate-end">
+              <Text color={C.main}>main</Text>
+              {path.map(id => {
+                const one = t.agents[id]
+                return one ? <Text color={agentColor(one.type)}>{' › ' + one.type}</Text> : ''
+              })}
+            </Text>
+          </Box>
+          <Box flexDirection="column" borderStyle="round" borderColor={color} paddingX={1}>
+            <Box flexDirection="row" justifyContent="space-between" gap={1}>
+              <Box flexGrow={1} flexShrink={1}>
+                <Text>
+                  <Text color={color} bold>
+                    {a.type}
+                  </Text>
+                  <Text color={C.dim}>{a.description ? ' ' + a.description : ''}</Text>
+                </Text>
+              </Box>
+              {pill(a)}
+            </Box>
+            <Box flexDirection="column" gap={1}>
+              {a.items.map(item => {
+                if (item.kind === 'thought') return thoughtView(item, live && item === last)
+                const child = t.agents[item.id]
+                return child ? agentCard(child, width - 10, 0) : null
+              })}
+            </Box>
+          </Box>
         </Box>
       )
     }
@@ -561,10 +641,16 @@ export const register: Register = on => {
             {latestAgents.length > 0 ? liveCount + ' running · ' + doneCount + ' done' : ''}
           </Text>
         </Box>
-        {t.turns.length === 0 ? (
-          <Text color={C.dim}>Nothing yet. Claude's thinking shows up here as it streams.</Text>
-        ) : null}
-        {t.turns.map(turn => turnView(turn, turn === latest))}
+        {current ? (
+          agentPage(current)
+        ) : (
+          <Box flexDirection="column" gap={1}>
+            {t.turns.length === 0 ? (
+              <Text color={C.dim}>Nothing yet. Claude's thinking shows up here as it streams.</Text>
+            ) : null}
+            {t.turns.map(turn => turnView(turn, turn === latest))}
+          </Box>
+        )}
       </Box>
     )
   })

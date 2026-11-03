@@ -39,6 +39,8 @@ declare module 'claude-code' {
       toggled: Record<string, boolean>
       /** Bumped each second while an agent runs, so its timer redraws. */
       tick: number
+      /** The agent page shown: ids from main down to that agent; empty is main. */
+      page: string[]
     }
   }
 }

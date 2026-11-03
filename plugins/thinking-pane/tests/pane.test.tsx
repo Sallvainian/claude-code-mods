@@ -19,6 +19,7 @@ const PANE = {
 function engine(on: On, thinking: Record<string, string[]>) {
   on('command.register', () => ({ value: { command: 'thinking' } }))
   on('ui.open', () => ({ value: { isPlaced: true } }))
+  on('ui.scroll', () => ({}))
   on('session.start', (_, e) => ({ cwd: e.cwd }))
   on('turn.start', (_, e) => ({ turnId: e.turnId }))
   on('turn.complete', (_, e) => ({ text: e.answer }))
@@ -35,7 +36,7 @@ async function drain(stream: AsyncGenerator<unknown, unknown>) {
   }
 }
 
-test('main and subagent thinking land in their own cards, and a finished agent collapses', async ($, on) => {
+test('subagents are cards on main; a card opens its page, back returns, the viewed transcript opens its page', async ($, on) => {
   const clock = mock.clock(on, { now: Date.UTC(2026, 10, 3, 14, 2, 7) })
   engine(on, {
     main: ['Users get logged out ', 'after an hour.'],
@@ -51,10 +52,25 @@ test('main and subagent thinking land in their own cards, and a finished agent c
   await drain($.turn.step({ turnId: 's1', index: 0, model: 'm', messageCount: 1, agentId: 'explore-1' }))
   await clock.advance(200)
 
+  // Main shows the agent as a card to open, without its thinking.
   let ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
-  expect((await ui.find({ type: 'Text', text: /Users get logged out after an hour\./ }))?.text).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: /Grep for refreshToken/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /Users get logged out after an hour\./ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^Explore$/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /● 0:0\d/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /Grep for refreshToken/ })).toBeUndefined()
+
+  // Its card opens its page: the trail back, and its thinking alone.
+  await ui.press({ key: 'open-explore-1' })
+  await clock.advance(200)
+  expect(await ui.find({ type: 'Text', text: /Grep for refreshToken/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /Users get logged out/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /› Explore/ })).toBeDefined()
+
+  // Back returns to main.
+  await ui.press({ key: 'back' })
+  await clock.advance(200)
+  expect(await ui.find({ type: 'Text', text: /Grep for refreshToken/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /Users get logged out/ })).toBeDefined()
   await ui.unmount()
 
   await clock.advance(9000)
@@ -62,12 +78,11 @@ test('main and subagent thinking land in their own cards, and a finished agent c
   await clock.advance(200)
 
   ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
-  expect(await ui.find({ type: 'Text', text: /Grep for refreshToken/ })).toBeUndefined()
-  expect(await ui.find({ type: 'Text', text: /✓ 12s/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /✓ 1[23]s/ })).toBeDefined()
+  await ui.unmount()
 
-  // Opening the finished card by hand shows its thinking again.
-  await ui.press({ key: 'toggle-explore-1' })
-  await clock.advance(200)
+  // Opening the agent's transcript beside the pane opens its page.
+  ui = await $.ui.mount({ ...PANE, surface: 'terminal', props: { ...PANE.props, view: { agentId: 'explore-1' } } })
   expect(await ui.find({ type: 'Text', text: /Grep for refreshToken/ })).toBeDefined()
   await ui.unmount()
 })
