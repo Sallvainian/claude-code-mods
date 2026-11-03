@@ -121,10 +121,15 @@ test('thinking is styled; a turn with no thinking keeps only its prompt row, whi
   expect(await ui.find({ type: 'Text', text: /^\d{1,2}:\d{2}:\d{2} [AP]M$/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: / · / })).toBeUndefined()
 
-  // The prompt row opens and closes.
+  // The prompt box folds to its header, like the main card, and opens again.
   await ui.press({ key: 'prompt-t1' })
   await clock.advance(200)
-  expect(await ui.find({ type: 'Text', text: /^▾ $/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^fix it$/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /^▸ $/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /a turn with no thinking/ })).toBeDefined()
+  await ui.press({ key: 'prompt-t1' })
+  await clock.advance(200)
+  expect(await ui.find({ type: 'Text', text: /^fix it$/ })).toBeDefined()
 
   // The main card folds to its header, like the prompt box, and opens again.
   await ui.press({ key: 'main-t1' })
@@ -134,5 +139,23 @@ test('thinking is styled; a turn with no thinking keeps only its prompt row, whi
   await ui.press({ key: 'main-t1' })
   await clock.advance(200)
   expect(await ui.find({ type: 'Text', text: /^src\/auth\.ts$/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('a long prompt shows its first lines; its text opens the rest', async ($, on) => {
+  const clock = mock.clock(on, { now: Date.UTC(2026, 10, 3, 14, 2, 7) })
+  engine(on, {})
+  const long = 'start ' + 'word '.repeat(60) + 'the end'
+
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await $.turn.start({ turnId: 't1', text: long })
+  await clock.advance(200)
+
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: /^start word/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /the end$/ })).toBeUndefined()
+  await ui.press({ key: 'prompt-t1-text' })
+  await clock.advance(200)
+  expect(await ui.find({ type: 'Text', text: /the end$/ })).toBeDefined()
   await ui.unmount()
 })

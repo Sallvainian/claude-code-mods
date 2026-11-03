@@ -543,9 +543,12 @@ export const register: Register = on => {
       const lastThought = thoughts[thoughts.length - 1]
 
       const promptKey = 'prompt-' + turn.id
-      const promptOpen = toggled[promptKey] ?? false
+      const promptOpen = toggled[promptKey] ?? true
+      const fullKey = promptKey + '-full'
+      const promptFull = toggled[fullKey] ?? false
       const prompt = turn.prompt.trim()
       const togglePrompt = () => update($, toggledAtom, map => ({ ...map, [promptKey]: !promptOpen }))
+      const toggleFull = () => update($, toggledAtom, map => ({ ...map, [fullKey]: !promptFull }))
       const mainKey = 'main-' + turn.id
       const mainOpen = toggled[mainKey] ?? true
       const toggleMain = () => update($, toggledAtom, map => ({ ...map, [mainKey]: !mainOpen }))
@@ -560,12 +563,14 @@ export const register: Register = on => {
                   user
                 </Text>
               </Button>
-              <Text color={C.time}>{hms(turn.startedAt)}</Text>
-              <Button key={promptKey + '-text'} plain onPress={togglePrompt}>
-                <Text color={C.promptText} wrap="wrap">
-                  {promptOpen ? prompt : clip(promptLabel(prompt), (width - 4) * 3)}
-                </Text>
-              </Button>
+              {promptOpen ? <Text color={C.time}>{hms(turn.startedAt)}</Text> : null}
+              {promptOpen ? (
+                <Button key={promptKey + '-text'} plain onPress={toggleFull}>
+                  <Text color={C.promptText} wrap="wrap">
+                    {promptFull ? prompt : clip(promptLabel(prompt), (width - 4) * 3)}
+                  </Text>
+                </Button>
+              ) : null}
             </Box>
           ) : (
             <Text color={C.dim}>{'── ' + hms(turn.startedAt)}</Text>
