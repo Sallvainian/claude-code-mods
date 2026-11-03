@@ -91,7 +91,9 @@ test('thinking is styled; a turn with no thinking keeps only its prompt row, whi
   expect(await ui.find({ type: 'Text', text: /a turn with no thinking/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /No thinking/ })).toBeUndefined()
 
-  // The prompt has the row to itself; its time sits on the line below.
+  // The prompt box is headed "user", like the agent cards are headed by their type.
+  expect(await ui.find({ type: 'Text', text: /^user$/ })).toBeDefined()
+  // The prompt has the row to itself; its time sits on the line above it.
   expect(await ui.find({ type: 'Text', text: /^fix it$/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /^\d{1,2}:\d{2}:\d{2} [AP]M$/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: / · / })).toBeUndefined()
@@ -99,6 +101,6 @@ test('thinking is styled; a turn with no thinking keeps only its prompt row, whi
   // The prompt row opens and closes.
   await ui.press({ key: 'prompt-t1' })
   await clock.advance(200)
-  expect(await ui.find({ type: 'Text', text: /^▾$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^▾ $/ })).toBeDefined()
   await ui.unmount()
 })

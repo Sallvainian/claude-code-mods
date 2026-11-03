@@ -446,7 +446,7 @@ export const register: Register = on => {
         <Box
           flexDirection="column"
           borderStyle="round"
-          borderColor={live ? C.live : C.border}
+          borderColor={color}
           paddingX={1}
           marginLeft={depth === 0 ? 2 : 0}
         >
@@ -514,28 +514,24 @@ export const register: Register = on => {
         <Box flexDirection="column" gap={1}>
           {prompt ? (
             <Box flexDirection="column" borderStyle="round" borderColor={C.prompt} paddingX={1}>
-              {/* The arrow and the text sit in separate columns, so wrapped lines line up under the first. */}
-              <Box flexDirection="row" gap={1}>
-                <Button key={promptKey} plain onPress={togglePrompt}>
-                  <Text color={C.prompt}>{promptOpen ? '▾' : '▸'}</Text>
-                </Button>
-                <Box flexGrow={1} flexShrink={1}>
-                  <Button key={promptKey + '-text'} plain onPress={togglePrompt}>
-                    <Text color={C.promptText} wrap="wrap">
-                      {promptOpen ? prompt : clip(promptLabel(prompt), (width - 6) * 3)}
-                    </Text>
-                  </Button>
-                </Box>
-              </Box>
-              <Box paddingLeft={2}>
-                <Text color={C.time}>{hms(turn.startedAt)}</Text>
-              </Box>
+              <Button key={promptKey} plain onPress={togglePrompt}>
+                <Text color={C.dim}>{promptOpen ? '▾ ' : '▸ '}</Text>
+                <Text color={C.prompt} bold>
+                  user
+                </Text>
+              </Button>
+              <Text color={C.time}>{hms(turn.startedAt)}</Text>
+              <Button key={promptKey + '-text'} plain onPress={togglePrompt}>
+                <Text color={C.promptText} wrap="wrap">
+                  {promptOpen ? prompt : clip(promptLabel(prompt), (width - 4) * 3)}
+                </Text>
+              </Button>
             </Box>
           ) : (
             <Text color={C.dim}>{'── ' + hms(turn.startedAt)}</Text>
           )}
           {thoughts.length > 0 ? (
-            <Box flexDirection="column" borderStyle="round" borderColor={C.border} paddingX={1}>
+            <Box flexDirection="column" borderStyle="round" borderColor={C.main} paddingX={1}>
               <Box flexDirection="row" justifyContent="space-between">
                 <Text color={C.main} bold>
                   main
