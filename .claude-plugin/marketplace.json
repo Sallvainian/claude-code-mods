@@ -5,7 +5,7 @@
     {
       "name": "thinking-pane",
       "source": "./plugins/thinking-pane",
-      "description": "Shows Claude's thinking live in a side pane, with each subagent's thinking in a collapsible card"
+      "description": "Shows Claude's thinking live in a side pane, with a page for each subagent"
     },
     {
       "name": "pane-backdrop",
