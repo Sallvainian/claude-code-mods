@@ -1,6 +1,6 @@
 {
   "name": "thinking-pane",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Shows Claude's thinking live in a side pane, with each subagent's thinking in a collapsible card",
   "types": "./types/index.d.ts"
 }

@@ -99,6 +99,6 @@ test('thinking is styled; a turn with no thinking keeps only its prompt row, whi
   // The prompt row opens and closes.
   await ui.press({ key: 'prompt-t1' })
   await clock.advance(200)
-  expect(await ui.find({ type: 'Text', text: /^▾ $/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^▾$/ })).toBeDefined()
   await ui.unmount()
 })

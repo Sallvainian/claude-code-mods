@@ -21,6 +21,8 @@ const C = {
   live: '#a6e3a1',
   liveInk: '#1e1e2e',
   pill: '#313244',
+  prompt: '#b4befe',
+  promptText: '#cdd6f4',
   path: '#f9e2af',
   code: '#f5c2e7',
 }
@@ -506,21 +508,25 @@ export const register: Register = on => {
       const promptKey = 'prompt-' + turn.id
       const promptOpen = toggled[promptKey] ?? false
       const prompt = turn.prompt.trim()
+      const togglePrompt = () => update($, toggledAtom, map => ({ ...map, [promptKey]: !promptOpen }))
 
       return (
         <Box flexDirection="column" gap={1}>
           {prompt ? (
-            <Box flexDirection="column">
-              <Button
-                key={promptKey}
-                plain
-                onPress={() => update($, toggledAtom, map => ({ ...map, [promptKey]: !promptOpen }))}
-              >
-                <Text color={C.dim}>{promptOpen ? '▾ ' : '▸ '}</Text>
-                <Text color={C.dim} wrap="wrap">
-                  {promptOpen ? prompt : clip(promptLabel(prompt), (width - 3) * 3)}
-                </Text>
-              </Button>
+            <Box flexDirection="column" borderStyle="round" borderColor={C.prompt} paddingX={1}>
+              {/* The arrow and the text sit in separate columns, so wrapped lines line up under the first. */}
+              <Box flexDirection="row" gap={1}>
+                <Button key={promptKey} plain onPress={togglePrompt}>
+                  <Text color={C.prompt}>{promptOpen ? '▾' : '▸'}</Text>
+                </Button>
+                <Box flexGrow={1} flexShrink={1}>
+                  <Button key={promptKey + '-text'} plain onPress={togglePrompt}>
+                    <Text color={C.promptText} wrap="wrap">
+                      {promptOpen ? prompt : clip(promptLabel(prompt), (width - 6) * 3)}
+                    </Text>
+                  </Button>
+                </Box>
+              </Box>
               <Box paddingLeft={2}>
                 <Text color={C.time}>{hms(turn.startedAt)}</Text>
               </Box>
