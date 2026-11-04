@@ -12,7 +12,7 @@ A pane beside the transcript that shows Claude's thinking as it streams, so you 
 
 The pane docks on the right in the fullscreen layout (`/tui fullscreen`) with a terminal at least 110 columns wide; otherwise it opens above the prompt.
 
-The pane keeps the last 25 turns, and only for the current session. Nothing is written to disk.
+The pane keeps the last 25 turns, and only for the current session. Nothing is written to disk. The newest 3 turns show their contents; older ones fold to their headers, which open them again.
 
 ## Install
 
