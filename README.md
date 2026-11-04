@@ -24,21 +24,23 @@ Gives every mod's pane a transparent background unless that mod picked a color i
 
 ## Install
 
-At the prompt of a Claude Code terminal session:
+The repo is its own plugin marketplace. Run this in the terminal:
 
-```
-/plugin install thinking-pane --marketplace Sallvainian/claude-code-mods
-/plugin install pane-backdrop --marketplace Sallvainian/claude-code-mods
+```bash
+claude plugin marketplace add Sallvainian/claude-code-mods
+claude plugin install thinking-pane@claude-code-mods
+claude plugin install pane-backdrop@claude-code-mods
 ```
 
-Answer `y` to add the marketplace, then pick a scope.
+Or inside a Claude Code session:
 
-From a shell:
+```text
+/plugin marketplace add Sallvainian/claude-code-mods
+/plugin install thinking-pane@claude-code-mods
+/plugin install pane-backdrop@claude-code-mods
+```
 
-```
-claude plugin install thinking-pane --marketplace Sallvainian/claude-code-mods
-claude plugin install pane-backdrop --marketplace Sallvainian/claude-code-mods
-```
+Install either one alone by leaving out the other's line.
 
 In the desktop app, where `/plugin` does not run: click + next to the prompt box, then Plugins, Add marketplace with `Sallvainian/claude-code-mods`, then Add plugin.
 

@@ -16,8 +16,18 @@ The pane keeps the last 25 turns, and only for the current session. Nothing is w
 
 ## Install
 
+The repo is its own plugin marketplace. Run this in the terminal:
+
+```bash
+claude plugin marketplace add Sallvainian/claude-code-mods
+claude plugin install thinking-pane@claude-code-mods
 ```
-/plugin install thinking-pane --marketplace Sallvainian/claude-code-mods
+
+Or inside a Claude Code session:
+
+```text
+/plugin marketplace add Sallvainian/claude-code-mods
+/plugin install thinking-pane@claude-code-mods
 ```
 
 Needs Claude Code 2.1.287 or later.

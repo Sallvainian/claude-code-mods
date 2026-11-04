@@ -8,8 +8,18 @@ It has no settings and no commands. It reads nothing and writes nothing; it chan
 
 ## Install
 
+The repo is its own plugin marketplace. Run this in the terminal:
+
+```bash
+claude plugin marketplace add Sallvainian/claude-code-mods
+claude plugin install pane-backdrop@claude-code-mods
 ```
-/plugin install pane-backdrop --marketplace Sallvainian/claude-code-mods
+
+Or inside a Claude Code session:
+
+```text
+/plugin marketplace add Sallvainian/claude-code-mods
+/plugin install pane-backdrop@claude-code-mods
 ```
 
 Needs Claude Code 2.1.287 or later.
